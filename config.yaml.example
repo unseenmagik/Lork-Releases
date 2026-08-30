@@ -1,0 +1,48 @@
+server:
+  host: "0.0.0.0"
+  port: 5090
+
+browser:
+  pool_size: 2
+  headless: true
+  health_check_interval: 30
+  disable_gpu: false
+  disable_dev_shm: true
+  extra_args: []
+
+auth:
+  timeout: 120
+
+proxy:
+  file: "proxies.txt"
+  rate_limit_cooldown: 3600
+  max_failures: 3
+  flush_interval: 30
+  stats_file: "proxy_stats.json"
+  rotate_every_uses: 1
+  max_uses: 0
+
+extensions:
+  ws_port: 9091
+
+cache:
+  enabled: true
+  refresh_interval: 1800
+  dir: "/tmp/lork-asset-cache"
+  assets: []
+
+logging:
+  level: "INFO"
+  file: null
+  rotation: "10 MB"
+  retention: "7 days"
+  colorize: true
+  timestamps: true
+  time_format: "HH:mm:ss"
+  quiet_modules:
+    - "httpx"
+    - "uvicorn"
+    - "zendriver"
+    - "websockets"
+    - "uc.connection"
+  module_levels: {}

@@ -1,0 +1,17 @@
+services:
+  lork:
+    image: ghcr.io/the-treeline-project/lork-releases/lork:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5090:5090"
+    volumes:
+      - ./config.yaml:/lork/config.yaml
+      - ./proxies.txt:/lork/proxies.txt
+    environment:
+      - LORK_SERVER_PORT=5090
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G

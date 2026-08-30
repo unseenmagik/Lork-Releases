@@ -1,0 +1,15 @@
+# One proxy per line. Blank lines are ignored.
+# Every proxy (HTTP/HTTPS/SOCKS5/SOCKS5h, with or without credentials) is routed
+# through Lork's internal relay, so authenticated SOCKS5 works too.
+#
+# A bare host:port with no scheme is treated as HTTP. Use socks5:// / socks5h://
+# for SOCKS. Examples (pick the format your provider gives you):
+#
+# ip:port
+# ip:port:username:password
+# username:password@ip:port
+# http://user:pass@host:port
+# socks5://user:pass@host:port
+# socks5h://user:pass@host:port
+#
+# LOCAL   -> use the machine's own IP (no proxy)

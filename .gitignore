@@ -1,0 +1,17 @@
+# Runtime files created when you run Lork — never commit these,
+# they contain your proxies, credentials, and machine state.
+config.yaml
+proxies.txt
+proxy_stats.json
+proxy_stats.json.*
+docker-compose.yml
+*.log
+
+# OS and editor junk
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
