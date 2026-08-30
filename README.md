@@ -61,7 +61,7 @@ Setting up Lork is a easy start-and-forget process. It requires you to install D
 
 3. Copy the example Docker-Compose file:
    ```
-   cp docker-compose.example.yml docker-compose.yml
+   cp docker-compose.yml.example docker-compose.yml
    ```      
 
 4. Run with Docker:
