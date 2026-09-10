@@ -177,6 +177,41 @@ SOCKS. Aggregate relay traffic is reported under the `relay` key of
 
 OpenAPI docs are available at `/schema/`.
 
+## Direct Login Call
+
+Authenticate a PTC account by calling `/api/v1/login-code` directly:
+
+```bash
+curl -X POST http://localhost:5090/api/v1/login-code \
+  -H "Content-Type: application/json" \
+  -d '{"username":"your-username","password":"your-password"}'
+```
+
+Successful response:
+
+```json
+{
+  "login_code": "eyJhbGciOi...",
+  "status": "SUCCESS"
+}
+```
+
+The `url` field is optional. When omitted, Lork generates the Pokemon GO OAuth2 URL
+itself. You can supply your own instead:
+
+```bash
+curl -X POST http://localhost:5090/api/v1/login-code \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "your-username",
+    "password": "your-password",
+    "url": "https://access.pokemon.com/oauth2/auth?client_id=pokemon-go&..."
+  }'
+```
+
+`status` is one of `SUCCESS`, `INVALID`, `BANNED`, `TIMEOUT` or `ERROR`, and maps to
+HTTP `200`, `400`, `418`, `408` or `500` respectively.
+
 ## Updating
 
 Lork is distributed as a pre-built Docker image, so updating is just pulling the
