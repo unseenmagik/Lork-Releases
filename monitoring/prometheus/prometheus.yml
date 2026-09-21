@@ -1,0 +1,50 @@
+# Route A: Prometheus config for the bundled stack (docker compose --profile stack up -d).
+# Prometheus reaches the exporters by service name; the exporters reach Lork at
+# http://lork:5090 over Lork's Docker network (service name "lork", container port 5090).
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  - job_name: lork_api
+    metrics_path: /probe
+    static_configs:
+      - targets: ['http://lork:5090/api/v1/health']
+        labels: { __param_module: health }
+      - targets: ['http://lork:5090/api/v1/proxy-stats']
+        labels: { __param_module: proxy_stats }
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - target_label: instance
+        replacement: lork
+      - target_label: __address__
+        replacement: json-exporter:7979
+
+  - job_name: lork_health
+    metrics_path: /probe
+    params:
+      module: [lork_health]
+    static_configs:
+      - targets: ['http://lork:5090/api/v1/health']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - target_label: instance
+        replacement: lork
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  - job_name: lork_logs
+    static_configs:
+      - targets: ['mtail:3903']
+    relabel_configs:
+      - target_label: instance
+        replacement: lork
+
+  - job_name: cadvisor
+    static_configs:
+      - targets: ['cadvisor:8080']

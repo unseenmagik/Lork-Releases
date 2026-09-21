@@ -9,6 +9,13 @@ services:
       - ./proxies.txt:/lork/proxies.txt
     environment:
       - LORK_SERVER_PORT=5090
+    # Docker keeps container logs forever by default. Lork logs a line per auth, so cap
+    # them or they will fill the disk. 5 x 50 MB keeps roughly the last 250 MB.
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
     deploy:
       resources:
         limits:

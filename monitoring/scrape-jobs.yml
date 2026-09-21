@@ -1,0 +1,45 @@
+# Route B: add these jobs under scrape_configs: in your existing Prometheus or vmagent config.
+# See "Route B" in README.md for where 127.0.0.1 needs changing.
+#
+#   http://lork:5090/...   fetched BY the exporters over Lork's Docker network - leave as is.
+#   127.0.0.1:7979/9115/3903/8081   where YOUR scraper reaches the exporters.
+
+  - job_name: lork_api
+    metrics_path: /probe
+    static_configs:
+      - targets: ['http://lork:5090/api/v1/health']
+        labels: { __param_module: health }
+      - targets: ['http://lork:5090/api/v1/proxy-stats']
+        labels: { __param_module: proxy_stats }
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - target_label: instance
+        replacement: lork
+      - target_label: __address__
+        replacement: 127.0.0.1:7979
+
+  - job_name: lork_health
+    metrics_path: /probe
+    params:
+      module: [lork_health]
+    static_configs:
+      - targets: ['http://lork:5090/api/v1/health']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - target_label: instance
+        replacement: lork
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
+
+  - job_name: lork_logs
+    static_configs:
+      - targets: ['127.0.0.1:3903']
+    relabel_configs:
+      - target_label: instance
+        replacement: lork
+
+  - job_name: cadvisor
+    static_configs:
+      - targets: ['127.0.0.1:8081']

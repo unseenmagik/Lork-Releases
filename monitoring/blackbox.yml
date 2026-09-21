@@ -1,0 +1,9 @@
+# Up/down probe for Lork: passes only when /api/v1/health returns 200 and "status":"healthy".
+modules:
+  lork_health:
+    prober: http
+    timeout: 5s
+    http:
+      valid_status_codes: [200]
+      fail_if_body_not_matches_regexp:
+        - '"status"\s*:\s*"healthy"'

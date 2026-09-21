@@ -1,0 +1,73 @@
+# Turns Lork's JSON API into Prometheus metrics.
+# Prometheus scrapes json-exporter:7979/probe?module=<name>&target=<lork url> (see prometheus.yml).
+modules:
+  # GET /api/v1/health
+  # {"status":"healthy","instances":2,"proxies":{"total":1,"active":1,"rate_limited":0,"dead":0},"uptime_seconds":14179.16}
+  health:
+    metrics:
+      - name: lork_browser_instances
+        help: Browser instances in the pool
+        path: '{.instances}'
+      - name: lork_uptime_seconds
+        help: Seconds since Lork started
+        path: '{.uptime_seconds}'
+      - name: lork_proxies_total
+        help: Proxies loaded from proxies.txt
+        path: '{.proxies.total}'
+      - name: lork_proxies_active
+        help: Proxies currently usable
+        path: '{.proxies.active}'
+      - name: lork_proxies_rate_limited
+        help: Proxies in rate-limit cooldown
+        path: '{.proxies.rate_limited}'
+      - name: lork_proxies_dead
+        help: Proxies marked dead
+        path: '{.proxies.dead}'
+
+  # GET /api/v1/proxy-stats
+  # {"proxies":[{"host":"...","port":31112,"status":"active","successes":0,"failures":0,...}],
+  #  "relay":{"connections":50,"active":0,"failures":3,"bytes_up":5371743,"bytes_down":43746109}}
+  proxy_stats:
+    metrics:
+      # -> lork_proxy_successes{host,port}, lork_proxy_failures{host,port}
+      - name: lork_proxy
+        type: object
+        help: Per-proxy auth results
+        path: '{.proxies[*]}'
+        valuetype: counter
+        labels:
+          host: '{.host}'
+          port: '{.port}'
+        values:
+          successes: '{.successes}'
+          failures: '{.failures}'
+      # -> lork_proxy_status_info{host,port,status} 1
+      - name: lork_proxy_status
+        type: object
+        help: Current proxy status as a label (active, rate_limited, dead, ...)
+        path: '{.proxies[*]}'
+        labels:
+          host: '{.host}'
+          port: '{.port}'
+          status: '{.status}'
+        values:
+          info: 1
+      - name: lork_relay_connections
+        help: Relay connections opened since start
+        path: '{.relay.connections}'
+        valuetype: counter
+      - name: lork_relay_failures
+        help: Relay connection failures since start
+        path: '{.relay.failures}'
+        valuetype: counter
+      - name: lork_relay_bytes_up
+        help: Bytes sent upstream through proxies
+        path: '{.relay.bytes_up}'
+        valuetype: counter
+      - name: lork_relay_bytes_down
+        help: Bytes received from proxies
+        path: '{.relay.bytes_down}'
+        valuetype: counter
+      - name: lork_relay_active
+        help: Relay connections open right now
+        path: '{.relay.active}'

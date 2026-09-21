@@ -1,0 +1,122 @@
+# Lork monitoring. See README.md in this folder.
+#
+#   Route A - full stack (exporters + Prometheus + Grafana):  docker compose --profile stack up -d
+#   Route B - exporters only, for an existing Prometheus/vmagent:  docker compose up -d
+#
+# Always run docker compose from this folder: with no compose file here, Compose would
+# fall back to Lork's ../docker-compose.yml and act on Lork instead.
+name: lork-monitoring
+
+services:
+  json-exporter:
+    image: quay.io/prometheuscommunity/json-exporter:latest
+    command: --config.file=/config.yml
+    volumes:
+      - ./json_exporter.yml:/config.yml:ro
+    ports:
+      - "127.0.0.1:7979:7979"
+    networks: [lork, monitoring]
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    restart: unless-stopped
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:latest
+    command: --config.file=/config.yml
+    volumes:
+      - ./blackbox.yml:/config.yml:ro
+    ports:
+      - "127.0.0.1:9115:9115"
+    networks: [lork, monitoring]
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    restart: unless-stopped
+
+  # Counts auth results from Lork's log lines. See mtail/lork.mtail.
+  # Linux hosts only: it reads Docker's JSON log files directly, which requires
+  # the default json-file logging driver. Remove this service on Docker Desktop.
+  mtail:
+    image: ghcr.io/google/mtail:3.0.8
+    user: "0:0"                 # Docker's log files are root-only; numeric, as the image has no /etc/passwd
+    command:
+      - -logtostderr
+      - -progs=/etc/mtail
+      - -logs=/var/lib/docker/containers/*/*-json.log
+    volumes:
+      - ./mtail:/etc/mtail:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    ports:
+      - "127.0.0.1:3903:3903"
+    networks: [monitoring]
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    restart: unless-stopped
+
+  # Linux hosts only. Remove if you already run cAdvisor.
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    command: --docker_only=true --housekeeping_interval=15s --store_container_labels=false
+    privileged: true
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "127.0.0.1:8081:8080"
+    networks: [monitoring]
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    restart: unless-stopped
+
+  # --- Route A only (--profile stack) ---
+
+  prometheus:
+    image: prom/prometheus:latest
+    profiles: [stack]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=30d
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    networks: [monitoring]
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    profiles: [stack]
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks: [monitoring]
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    restart: unless-stopped
+
+networks:
+  monitoring:
+  lork:
+    external: true
+    name: ${LORK_NETWORK:-lork_default}
+
+volumes:
+  prometheus-data:
+  grafana-data:

@@ -142,6 +142,12 @@ LORK_CACHE_REFRESH_INTERVAL=1800
 LORK_CACHE_DIR=/tmp/lork-asset-cache
 ```
 
+> [!WARNING]
+> Keep Lork on port `5090` inside the container. The image's Docker health check always
+> calls `localhost:5090`, so changing `LORK_SERVER_PORT` / `server.port` marks the
+> container **unhealthy**. To use another port, change only the host side of the mapping
+> in `docker-compose.yml`, e.g. `"127.0.0.1:5070:5090"`.
+
 ## Proxy Formats
 
 All of these are supported in `proxies.txt`:
@@ -211,6 +217,25 @@ curl -X POST http://localhost:5090/api/v1/login-code \
 
 `status` is one of `SUCCESS`, `INVALID`, `BANNED`, `TIMEOUT` or `ERROR`, and maps to
 HTTP `200`, `400`, `418`, `408` or `500` respectively.
+
+## Watchdog (temporary workaround)
+
+`monitoring/lork-watchdog.sh` is a temporary workaround for
+[issue #1](https://github.com/The-Treeline-Project/Lork-Releases/issues/1). It follows
+Lork's logs and restarts the container when a browser slot gets stuck on a dead DevTools
+port or every PTC login page load times out. See
+[monitoring/README.md](monitoring/README.md#watchdog-temporary-workaround) for setup.
+
+## Monitoring
+
+Lork can be monitored with Prometheus and Grafana without any changes to Lork. The
+[`monitoring/`](monitoring/) folder has the exporters, a Grafana dashboard and alert
+rules, plus the watchdog above. There are two setup routes:
+
+- **Full stack:** exporters, Prometheus and Grafana, all set up for you.
+- **Exporters only:** for an existing Prometheus, or VictoriaMetrics with vmagent (e.g. Zapdos), and Grafana.
+
+See [monitoring/README.md](monitoring/README.md) for setup.
 
 ## Updating
 

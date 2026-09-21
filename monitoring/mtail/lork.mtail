@@ -1,0 +1,40 @@
+# Counts finished auth requests from Lork's own log lines.
+#
+# Lork logs one line per completed auth on its API module, e.g.
+#
+#   21:25:01 | SUCCESS  |              API | -    | 200 OK: successful auth
+#
+# mtail reads Docker's JSON log files, so each line arrives wrapped like
+# {"log":"...\n","stream":"stdout",...} with ANSI colour codes escaped as \u001b[32m.
+# The patterns below allow for that wrapper and for colour, and key off the HTTP
+# status code, which maps one-to-one to Lork's auth status (see README.md):
+#
+#   200 SUCCESS   400 INVALID   418 BANNED   408 TIMEOUT   500 ERROR
+#
+# Each pattern requires an "API" field earlier in the line, so log lines from other
+# containers and from Lork's other modules are ignored.
+#
+# Check a change before restarting mtail:
+#   docker compose run --rm mtail -compile_only -progs=/etc/mtail
+
+counter lork_auth_results_total by status
+
+/\|[^|]*API[^|]*\|.*\|(?:\\u001b\[[0-9;]*m| )*200 [A-Z]/ {
+  lork_auth_results_total["SUCCESS"]++
+}
+
+/\|[^|]*API[^|]*\|.*\|(?:\\u001b\[[0-9;]*m| )*400 [A-Z]/ {
+  lork_auth_results_total["INVALID"]++
+}
+
+/\|[^|]*API[^|]*\|.*\|(?:\\u001b\[[0-9;]*m| )*418 [A-Z]/ {
+  lork_auth_results_total["BANNED"]++
+}
+
+/\|[^|]*API[^|]*\|.*\|(?:\\u001b\[[0-9;]*m| )*408 [A-Z]/ {
+  lork_auth_results_total["TIMEOUT"]++
+}
+
+/\|[^|]*API[^|]*\|.*\|(?:\\u001b\[[0-9;]*m| )*500 [A-Z]/ {
+  lork_auth_results_total["ERROR"]++
+}
