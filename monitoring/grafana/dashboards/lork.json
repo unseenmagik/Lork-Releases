@@ -501,7 +501,7 @@
       "id": 21,
       "type": "bargauge",
       "title": "Auth results by status (range)",
-      "description": "How many auths ended in each status over the dashboard time range. 200 SUCCESS, 400 INVALID, 418 BANNED, 408 TIMEOUT, 500 ERROR. Counted from Lork's log lines by mtail, so this is one per API request.",
+      "description": "How many auths ended in each status over the dashboard time range. 200 SUCCESS, 400 INVALID, 418 BANNED, 408 TIMEOUT, 500 ERROR. Counted from Lork's log lines by mtail, so this is one per API request. Statuses with no auths show as 0.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -519,7 +519,7 @@
             "uid": "${datasource}"
           },
           "refId": "A",
-          "expr": "sum by (status) (increase(lork_auth_results_total[$__range]))",
+          "expr": "sum by (status) (increase(lork_auth_results_total[$__range])) or label_replace(vector(0), \"status\", \"SUCCESS\", \"\", \"\") or label_replace(vector(0), \"status\", \"INVALID\", \"\", \"\") or label_replace(vector(0), \"status\", \"BANNED\", \"\", \"\") or label_replace(vector(0), \"status\", \"TIMEOUT\", \"\", \"\") or label_replace(vector(0), \"status\", \"ERROR\", \"\", \"\")",
           "legendFormat": "{{status}}",
           "instant": true
         }
@@ -536,7 +536,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "min": 0
         },
         "overrides": [
           {
@@ -570,6 +571,148 @@
           ],
           "fields": "",
           "values": false
+        },
+        "namePlacement": "left",
+        "showUnfilled": true
+      }
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "Warnings and errors per minute",
+      "description": "Lork log lines at WARNING level or above, per minute, split by level and module. Counted from Lork's log lines by mtail.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "refId": "A",
+          "expr": "sum by (level, module) (rate(lork_log_lines_total{level=~\"WARNING|ERROR|CRITICAL\"}[5m])) * 60",
+          "legendFormat": "{{level}} {{module}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "Watchdog triggers per minute",
+      "description": "The two failures lork-watchdog.sh restarts Lork for. A climb here, followed by a drop in Uptime, is a watchdog restart. Counted from Lork's log lines by mtail.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "refId": "A",
+          "expr": "sum(rate(lork_devtools_connect_failed_total[5m])) * 60 or vector(0)",
+          "legendFormat": "DevTools connect failed"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "refId": "B",
+          "expr": "sum(rate(lork_page_load_timeouts_total[5m])) * 60 or vector(0)",
+          "legendFormat": "Page load timed out"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "DevTools connect failed"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Page load timed out"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
         }
       }
     },
@@ -583,7 +726,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 16,
+        "y": 24,
         "w": 12,
         "h": 8
       },
@@ -637,7 +780,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 16,
+        "y": 24,
         "w": 12,
         "h": 8
       },
@@ -694,7 +837,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 24,
+        "y": 32,
         "w": 12,
         "h": 8
       },
@@ -756,7 +899,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 24,
+        "y": 32,
         "w": 12,
         "h": 8
       },
@@ -803,7 +946,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 32,
+        "y": 40,
         "w": 12,
         "h": 8
       },
@@ -857,7 +1000,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 32,
+        "y": 40,
         "w": 12,
         "h": 8
       },
@@ -919,7 +1062,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 40,
+        "y": 48,
         "w": 12,
         "h": 8
       },
@@ -964,7 +1107,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 40,
+        "y": 48,
         "w": 12,
         "h": 8
       },
@@ -1009,7 +1152,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 48,
+        "y": 56,
         "w": 12,
         "h": 8
       },
@@ -1054,7 +1197,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 48,
+        "y": 56,
         "w": 12,
         "h": 8
       },

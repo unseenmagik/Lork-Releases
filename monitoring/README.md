@@ -12,6 +12,7 @@ What you can see:
 - **Auths**: how many requests returned `SUCCESS`, `INVALID`, `BANNED`, `TIMEOUT` or `ERROR`, as totals, per minute and as a success rate
 - **Proxies**: active, rate-limited and dead counts, plus successes, failures and success rate for each proxy
 - **Relay traffic**: bytes sent and received, and connections opened, open and failed
+- **Log errors**: warnings and errors Lork logs, and the stuck-browser failures the watchdog restarts Lork for
 - **Container**: Lork's memory and CPU use (from cAdvisor)
 
 It also has [`lork-watchdog.sh`](#watchdog-temporary-workaround), a script that restarts
@@ -222,6 +223,7 @@ A VictoriaMetrics datasource works too, because VictoriaMetrics accepts the same
 | `LorkProxyFailing` | A proxy fails more than half of its auths over 30 minutes, with at least 5 failures |
 | `LorkAuthSuccessRateLow` | Fewer than half of all auth requests returned 200 over 30 minutes, with at least 10 failures (needs mtail) |
 | `LorkAuthsBanned` | 5 or more auths came back `418 BANNED` within 15 minutes (needs mtail) |
+| `LorkBrowserStuck` | 3 or more dead DevTools connections in 5 minutes, or 5 or more login page timeouts in 10 minutes (needs mtail) |
 | `LorkMemoryHigh` | The Lork container has used more than 3.5 GB for 10 minutes (the example compose limit is 4 GB) |
 
 ---
@@ -244,6 +246,11 @@ keys off the HTTP status code, which maps one-to-one to Lork's auth status:
 | `418` | `BANNED` |
 | `408` | `TIMEOUT` |
 | `500` | `ERROR` |
+
+It also counts two other things from the same logs:
+
+- `lork_log_lines_total{level,module}`: every Lork log line, by level (`INFO`, `WARNING`, `ERROR`, ...) and module (`API`, `BrowserAuth`, ...). The **Warnings and errors per minute** panel shows the `WARNING` and above.
+- `lork_devtools_connect_failed_total` and `lork_page_load_timeouts_total`: the two failures [`lork-watchdog.sh`](#watchdog-temporary-workaround) restarts Lork for, using the watchdog's own patterns. The **Watchdog triggers per minute** panel shows them.
 
 The `mtail` service reads Docker's JSON log files directly, so **Lork needs no config
 change** — no log file to mount, no restart. It does mean:
@@ -317,6 +324,9 @@ right after a reload usually just means you queried too early.
 > layout with a different code, which has not yet been confirmed against a real failing
 > line. If your failure counts stay at zero while auths are visibly failing, that is the
 > first thing to check.
+>
+> `lork_log_lines_total` assumes every Lork line starts `HH:MM:SS | LEVEL | Module |`,
+> as the `SUCCESS` line above does. If `INFO` lines are being counted, the layout is right.
 
 ---
 
@@ -425,6 +435,10 @@ These environment variables are optional:
 | `STALL_THRESHOLD` | `8` | Restart after this many page load timeouts in a row with no progress |
 | `COOLDOWN` | `180` | Seconds to ignore errors after a restart |
 
+Every restart shows up on the dashboard: the **Watchdog triggers per minute** panel
+climbs in the minutes before it, and **Uptime** drops to zero. The `LorkBrowserStuck`
+alert fires on the same failures, so you can use it with or without the watchdog.
+
 Run the script under **one** of the options below so it keeps running after you log out
 and starts again after a reboot. Don't run both, or they'll both restart Lork.
 
@@ -490,6 +504,9 @@ variable, run `pm2 restart lork-watchdog --update-env`.
 | `lork_browser_instances` | gauge | `/health` → `instances` |
 | `lork_proxies_total` / `_active` / `_rate_limited` / `_dead` | gauge | `/health` → `proxies.*` |
 | `lork_auth_results_total{status}` | counter | Lork's log lines, via mtail — `status` is `SUCCESS`, `INVALID`, `BANNED`, `TIMEOUT` or `ERROR` |
+| `lork_log_lines_total{level,module}` | counter | Lork's log lines, via mtail |
+| `lork_devtools_connect_failed_total` | counter | `Connect call failed ('127.0.0.1', <port>)` log lines, via mtail |
+| `lork_page_load_timeouts_total` | counter | `BrowserAuth ... Page load timed out` log lines, via mtail |
 | `lork_proxy_successes{host,port}` | counter | `/proxy-stats` → `proxies[].successes` |
 | `lork_proxy_failures{host,port}` | counter | `/proxy-stats` → `proxies[].failures` |
 | `lork_proxy_status_info{host,port,status}` | info (always 1) | `/proxy-stats` → `proxies[].status` |
@@ -565,6 +582,7 @@ ones can, because they carry the status.
 | Disk filling up | Docker keeps container logs forever by default — see [Disk usage](#disk-usage) |
 | Auth result panels are empty | mtail isn't running, isn't scraped, or its patterns don't match your log lines — see [Auth counters](#auth-counters-mtail) |
 | Watchdog logs `no such service: lork` or `no configuration file provided` | `COMPOSE_DIR` isn't Lork's folder; see [Watchdog](#watchdog-temporary-workaround) |
+| Watchdog restarts Lork but **Watchdog triggers** is empty | mtail isn't running or scraped, or it was started before the new counters were added; restart it — see [Auth counters](#auth-counters-mtail) |
 | Auth success rate is blank | No auths in the selected time range — the rate is a ratio, so it has nothing to divide |
 
 ## Removing it

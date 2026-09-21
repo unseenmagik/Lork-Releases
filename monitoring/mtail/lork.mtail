@@ -38,3 +38,33 @@ counter lork_auth_results_total by status
 /\|[^|]*API[^|]*\|.*\|(?:\\u001b\[[0-9;]*m| )*500 [A-Z]/ {
   lork_auth_results_total["ERROR"]++
 }
+
+# Every Lork log line, by level and module. Lork's layout is
+#
+#   21:25:01 | WARNING  |      BrowserAuth | ...
+#
+# i.e. time, level, then the module name, each separated by "|". Other containers'
+# logs don't use this layout, so they are ignored. INFO/SUCCESS lines are counted
+# too: they show the pattern matches even when nothing is going wrong.
+counter lork_log_lines_total by level, module
+
+/\d\d:\d\d:\d\d(?:\\u001b\[[0-9;]*m| )*\|(?:\\u001b\[[0-9;]*m| )*(?P<level>TRACE|DEBUG|INFO|SUCCESS|WARNING|ERROR|CRITICAL)(?:\\u001b\[[0-9;]*m| )*\|(?:\\u001b\[[0-9;]*m| )*(?P<module>[A-Za-z][A-Za-z0-9_.]*)(?:\\u001b\[[0-9;]*m| )*\|/ {
+  lork_log_lines_total[$level][$module]++
+}
+
+# The two failures lork-watchdog.sh restarts Lork for. Same patterns as the watchdog,
+# so these rise in the minutes before each watchdog restart.
+
+# A browser slot reconnecting to a DevTools port that has closed.
+counter lork_devtools_connect_failed_total
+
+/Connect call failed \(.127\.0\.0\.1., [0-9]+\)/ {
+  lork_devtools_connect_failed_total++
+}
+
+# A PTC login page load that timed out.
+counter lork_page_load_timeouts_total
+
+/BrowserAuth.*Page load timed out/ {
+  lork_page_load_timeouts_total++
+}

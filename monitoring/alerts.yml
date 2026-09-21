@@ -40,6 +40,15 @@ groups:
         annotations:
           summary: Lork returned 418 BANNED for 5 or more auths in 15 minutes
 
+      # Needs mtail. The same failures lork-watchdog.sh restarts Lork for; fires whether
+      # or not the watchdog is running.
+      - alert: LorkBrowserStuck
+        expr: |
+          sum(increase(lork_devtools_connect_failed_total[5m])) >= 3
+          or sum(increase(lork_page_load_timeouts_total[10m])) >= 5
+        annotations:
+          summary: Lork is logging dead DevTools connections or login page timeouts
+
       - alert: LorkMemoryHigh
         expr: container_memory_working_set_bytes{name=~".*lork.*"} > 3.5e9
         for: 10m
